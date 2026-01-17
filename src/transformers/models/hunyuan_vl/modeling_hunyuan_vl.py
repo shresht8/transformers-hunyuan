@@ -960,7 +960,7 @@ class HunYuanVLForConditionalGeneration(HunYuanVLPreTrainedModel, GenerationMixi
             inputs_embeds = inputs_embeds.masked_scatter(image_mask, image_embeds)
 
         outputs: BaseModelOutputWithPast = self.model(
-            input_ids=input_ids,
+            input_ids=None,
             attention_mask=attention_mask,
             position_ids=position_ids,
             past_key_values=past_key_values,
