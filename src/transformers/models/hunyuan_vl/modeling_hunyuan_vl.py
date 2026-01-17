@@ -896,6 +896,8 @@ class HunYuanVLForConditionalGeneration(HunYuanVLPreTrainedModel, GenerationMixi
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         past_key_values: Optional[Cache] = None,
+        pixel_values: Optional[torch.FloatTensor] = None,
+        image_grid_thw: Optional[torch.FloatTensor] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
         use_cache: Optional[bool] = None,
@@ -943,6 +945,20 @@ class HunYuanVLForConditionalGeneration(HunYuanVLPreTrainedModel, GenerationMixi
         >>> print(output)
 
         ```"""
+        if inputs_embeds is None:
+           inputs_embeds = self.model.embed_tokens(input_ids).clone()
+        if  pixel_values is not None:
+            pixel_values = pixel_values.to(torch.bfloat16)
+            image_embeds = self.vit(pixel_values, image_grid_thw)
+
+            # ViT may be deployed on different GPUs from those used by LLMs, due to auto-mapping of accelerate.
+            image_embeds = image_embeds.to(input_ids.device, non_blocking=True)
+
+            image_mask, _ = self.get_placeholder_mask(
+                input_ids, inputs_embeds=inputs_embeds, image_features=image_embeds
+            )
+            inputs_embeds = inputs_embeds.masked_scatter(image_mask, image_embeds)
+
         outputs: BaseModelOutputWithPast = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
